@@ -1,0 +1,12 @@
+{
+    "id": "chatbot_admin", 
+    "pw": "core1234!@", 
+    "host": "localhost", 
+    "port": "5432", 
+    "dbName": "material_db", 
+    "dbSchema": "public", 
+    "poolSize": 2, 
+    "maxOverflow": 10, 
+    "poolRecycle": 1800, 
+    "poolPrePing": true
+}

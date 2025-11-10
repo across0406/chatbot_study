@@ -1,6 +1,6 @@
 from typing import List
 import torch
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 
 
 def check_torch_can_use_cuda() -> None:
