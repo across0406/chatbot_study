@@ -32,8 +32,10 @@ except Exception as ex:
     print(f"Failed to connect DB: {ex}")
     exit()
 
-db: SQLDatabase = SQLDatabase(engine, include_tables=['materials', 'purchase_requests']) # type: ignore
-# llm: ChatOllama = ChatOllama(model="solar", temperature=0) # type: ignore
+tables: list[str] = ['materials', 'purchase_requests']
+db: SQLDatabase = SQLDatabase(engine, include_tables=tables) # type: ignore
+model_name: str = "llama3:8b"
+# model_name: str = "solar"
 llm: ChatOllama = ChatOllama(model="llama3:8b", temperature=0) # type: ignore
 
 # ----------------- Begin Text-to-SQL -----------------
@@ -86,10 +88,10 @@ answer_chain = answer_prompt | llm | StrOutputParser() # type: ignore
 #     agent_type="openai-tools", 
 #     verbose=True
 # )
-print("Complete to initialize SQLDatabaseChain (Model: SOLAR, DB: PostgreSQL)")
+print(f"Complete to initialize SQLDatabaseChain (Model: {model_name}, DB: PostgreSQL)")
 
 app: FastAPI = FastAPI( # type: ignore
-    title="ChatBot API for Material Management (SOLAR + PostgreSQL w/ chatbot_admin user)", 
+    title=f"ChatBot API for Material Management ({model_name} + PostgreSQL w/ chatbot_admin user)", 
     description="Get the response from database by converting the question in natural language into SQL."
 )
 
@@ -97,37 +99,39 @@ class QueryRequest(BaseModel): # type: ignore
     question: str
 
 
-@app.post("/ask", summary="Asking for material management database in natural language") # type: ignore
-async def ask_question(request: QueryRequest): # type: ignore
+@app.post("/ask", summary="Asking for material management database in natural language")
+def ask_question(request: QueryRequest): 
+    print(f"Received question: {request.question}")
+
     try:
-        sql_query = await sql_query_chain.ainvoke({ # type: ignore
+        sql_query = sql_query_chain.invoke({ 
             "question": request.question
         })
-
-        # Block non-select query
-        if not 'select' in sql_query.strip().lower().split(' '): # type: ignore
+        
+        if not 'select' in sql_query.strip().lower().split(' '):
             return {
-                "error": f"This request query is blocked."
+                "answer": None,
+                "success": False,
+                "error": "This request query is blocked."
             }
         
-        sql_result = db.run(sql_query) # type: ignore
-        final_answer = await answer_chain.ainvoke({ # type: ignore
+        sql_result = db.run(sql_query) 
+        
+        final_answer = answer_chain.invoke({
             "question": request.question, 
             "context": sql_result
         })
 
         return {
-            "answer": final_answer
-        } # type: ignore
+            "answer": final_answer,
+            "success": True,
+            "error": ''
+        }
 
-        # result = await db_chain.ainvoke(request.question) # type: ignore
-        # return {
-        #     "answer": result.get( # type: ignore
-        #         "result", 
-        #         "Cannot generate the answer.") 
-        # }
     except Exception as ex:
         print(f"Error: {ex}")
         return {
+            "answer": None,
+            "success": False,
             "error": f"The error is caused while processing asking: {str(ex)}"
         }
